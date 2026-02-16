@@ -2,60 +2,76 @@
 <html lang="te">
 <head>
     <meta charset="UTF-8">
-    <title>Telugu Dictation</title>
+    <title>Telugu Dictation MVP</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background: #f4f7f6; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 400px; text-align: center; }
-        .btn { width: 80px; height: 80px; border-radius: 50%; border: none; cursor: pointer; font-size: 30px; margin-bottom: 20px; }
-        .idle { background: #007bff; color: white; }
-        .recording { background: #ff4b2b; color: white; animation: blink 1s infinite; }
-        #output { margin-top: 20px; padding: 15px; background: #eee; border-radius: 8px; min-height: 40px; font-size: 1.2rem; }
-        .stats { font-size: 12px; color: #777; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #fafafa; }
+        .mic-container { border: 2px solid #ddd; display: inline-block; padding: 40px; border-radius: 20px; background: white; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 10px; border: none; }
+        .record-btn { background: #e74c3c; color: white; }
+        .stop-btn { background: #2c3e50; color: white; }
+        #transcript { margin-top: 30px; font-size: 24px; color: #2980b9; font-weight: bold; }
+        #telemetry { margin-top: 15px; font-size: 14px; color: #7f8c8d; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>తెలుగు డిక్టేషన్</h2>
-        <button id="micBtn" class="btn idle">🎤</button>
-        <div id="status">Ready</div>
-        <div id="output">...</div>
-        <div class="stats" id="telemetry">Latency: -- | Duration: --</div>
+    <div class="mic-container">
+        <h1>Telugu Dictation Engine</h1>
+        <p>Week 1: Hello Dictation Skeleton</p>
+        
+        <button id="startBtn" class="record-btn">Start Recording</button>
+        <button id="stopBtn" class="stop-btn" style="display:none;">Stop & Transcribe</button>
+        
+        <div id="transcript"></div>
+        <div id="telemetry"></div>
     </div>
 
     <script>
         let mediaRecorder;
-        let chunks = [];
-        const btn = document.getElementById('micBtn');
+        let audioChunks = [];
 
-        btn.onclick = async () => {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                btn.className = "btn idle";
-                return;
-            }
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const transcriptDiv = document.getElementById('transcript');
+        const telemetryDiv = document.getElementById('telemetry');
+
+        startBtn.onclick = async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-            chunks = [];
-            mediaRecorder.ondataavailable = e => chunks.push(e.data);
-            mediaRecorder.onstop = sendData;
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+            mediaRecorder.onstop = uploadAudio;
+
             mediaRecorder.start();
-            btn.className = "btn recording";
-            document.getElementById('status').innerText = "Listening...";
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+            transcriptDiv.innerText = "Listening...";
         };
 
-        async function sendData() {
-            const blob = new Blob(chunks, { type: 'audio/wav' });
+        stopBtn.onclick = () => {
+            mediaRecorder.stop();
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+        };
+
+        async function uploadAudio() {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
             const formData = new FormData();
-            formData.append('file', blob, 'audio.wav');
+            formData.append('file', audioBlob, 'mic_capture.wav');
+
+            transcriptDiv.innerText = "Transcribing (Stub)...";
+
+            // Sending to backend
+            const response = await fetch('http://localhost:8000/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
             
-            document.getElementById('status').innerText = "Processing...";
-            const res = await fetch('http://localhost:8000/transcribe', { method: 'POST', body: formData });
-            const data = await res.json();
-            
-            document.getElementById('output').innerText = data.transcript;
-            document.getElementById('telemetry').innerText = `Latency: ${data.telemetry.latency_ms}ms | Duration: ${data.telemetry.audio_duration_sec}s`;
-            document.getElementById('status').innerText = "Ready";
+            // Display Transcript and Telemetry
+            transcriptDiv.innerText = data.transcript;
+            telemetryDiv.innerText = `Latency: ${data.telemetry.latency} | Est. Duration: ${data.telemetry.duration}`;
         }
     </script>
 </body>
