@@ -62,7 +62,7 @@
             transcriptDiv.innerText = "Transcribing (Stub)...";
 
             // Sending to backend
-            const response = await fetch('http://localhost:8000/transcribe', {
+            const response = await fetch('/transcribe', {
                 method: 'POST',
                 body: formData
             });
