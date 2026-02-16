@@ -4,9 +4,9 @@ import uuid
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Telugu Dictation Engine")
+app = FastAPI()
 
-
+# Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,39 +14,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 @app.post("/transcribe")
-async def transcribe_telugu(file: UploadFile = File(...)):
-    start_time = time.perf_counter()
+async def transcribe(file: UploadFile = File(...)):
+    # Start telemetry timer
+    start_process = time.perf_counter()
     
-    # 1. Save the file
-    file_id = f"{uuid.uuid4()}.wav"
-    file_path = os.path.join(UPLOAD_DIR, file_id)
+    # Simulate receiving the audio file
     content = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(content)
+    file_size = len(content)
     
-    # 2. Telemetry Calculation
-    file_size_kb = len(content) / 1024
-    duration_est = len(content) / 32000  # Rough estimate for web audio
+    # Calculate basic telemetry: Audio Duration (Estimate)
+    # Most browser recordings are ~32KB per second
+    duration_sec = round(file_size / 32000, 2)
     
-    # 3. Simulate processing "vibe"
-    time.sleep(0.7) 
+    # STUB TRANSCRIPTION (Fake)
+    # "నమస్కారం, ఇది ఒక నమూనా ప్రతిలేఖనం." (Hello, this is a sample transcription.)
+    stub_text = "నమస్కారం, ఇది ఒక నమూనా ప్రతిలేఖనం."
     
-    # 4. Telugu Stub Response
-    stub_transcript = "నమస్కారం, ఇది తెలుగు డిక్టేషన్ ఇంజిన్ నుండి ఒక నమూనా ప్రతిలేఖనం."
-
-    latency_ms = (time.perf_counter() - start_time) * 1000
+    # Simulate a small "processing" delay
+    time.sleep(0.5)
+    
+    # Calculate telemetry: Latency
+    latency_ms = round((time.perf_counter() - start_process) * 1000, 2)
+    
+    # LOGGING (Deliverable: Basic telemetry events)
+    print(f"--- Telemetry Event ---")
+    print(f"File Received: {file.filename}")
+    print(f"Audio Duration: {duration_sec}s")
+    print(f"Processing Latency: {latency_ms}ms")
+    print(f"-----------------------")
 
     return {
-        "success": True,
-        "transcript": stub_transcript,
+        "transcript": stub_text,
         "telemetry": {
-            "latency_ms": round(latency_ms, 2),
-            "audio_duration_sec": round(duration_est, 2),
-            "file_size_kb": round(file_size_kb, 2)
+            "latency": f"{latency_ms}ms",
+            "duration": f"{duration_sec}s"
         }
     }
 
