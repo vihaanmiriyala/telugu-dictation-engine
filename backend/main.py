@@ -2,9 +2,15 @@ import time
 import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse # Added this
+from fastapi.responses import FileResponse
 
 app = FastAPI()
+
+# Get the absolute path to the directory this file is in
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,22 +19,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- NEW: Serve the Frontend UI ---
 @app.get("/")
 async def read_index():
-    # This looks for your index.html in the frontend folder
-    return FileResponse("../frontend/index.html")
+    # Robust pathing to find the index.html
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
     start_process = time.perf_counter()
-    content = await file.read()
-    file_size = len(content)
     
+    # SAVE the file so we can use it for Eval later
+    file_path = os.path.join(UPLOAD_DIR, f"{int(time.time())}.wav")
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+    
+    file_size = len(content)
     duration_sec = round(file_size / 32000, 2)
+    
+    # Telugu Stub
     stub_text = "నమస్కారం, ఇది ఒక నమూనా ప్రతిలేఖనం."
     
-    time.sleep(0.5)
+    time.sleep(0.5) # Simulate vibe-processing
     latency_ms = round((time.perf_counter() - start_process) * 1000, 2)
     
     return {
@@ -38,7 +50,3 @@ async def transcribe(file: UploadFile = File(...)):
             "duration": f"{duration_sec}s"
         }
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
